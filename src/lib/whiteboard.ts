@@ -2,7 +2,7 @@
 // In production, this should be replaced with a proper database
 
 export interface DrawingData {
-  type: 'draw' | 'erase';
+  type: 'draw' | 'erase' | 'shape';
   x: number;
   y: number;
   prevX?: number;
@@ -11,6 +11,10 @@ export interface DrawingData {
   color: string;
   userId: string;
   timestamp: number;
+  shapeType?: string;
+  width?: number;
+  height?: number;
+  text?: string;
 }
 
 // Simple in-memory storage
