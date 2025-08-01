@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Custom animations
+/* Custom animations */
 @keyframes float {
   0%, 100% {
     transform: translateY(0px);
@@ -30,6 +30,45 @@
   }
 }
 
+/* 404 Page Animations */
+@keyframes fade-in-up {
+  0% {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes glitch {
+  0%, 100% {
+    transform: translate(0);
+  }
+  20% {
+    transform: translate(-2px, 2px);
+  }
+  40% {
+    transform: translate(-2px, -2px);
+  }
+  60% {
+    transform: translate(2px, 2px);
+  }
+  80% {
+    transform: translate(2px, -2px);
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(139, 92, 246, 0.8);
+  }
+}
+
 .animate-float {
   animation: float 3s ease-in-out infinite;
 }
@@ -44,6 +83,30 @@
   animation: shimmer 2s infinite;
 }
 
+.animate-fade-in-up {
+  animation: fade-in-up 0.8s ease-out forwards;
+}
+
+.animate-glitch {
+  animation: glitch 0.3s ease-in-out infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.animation-delay-500 {
+  animation-delay: 0.5s;
+}
+
+.animation-delay-1000 {
+  animation-delay: 1s;
+}
+
+.animation-delay-1500 {
+  animation-delay: 1.5s;
+}
+
 .animation-delay-2000 {
   animation-delay: 2s;
 }
@@ -52,14 +115,14 @@
   animation-delay: 4s;
 }
 
-Glass morphism effect
+/* Glass morphism effect */
 .glass {
   background: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-Custom hover effects
+/* Custom hover effects */
 .hover-lift {
   transition: all 0.3s ease;
 }
@@ -69,7 +132,7 @@ Custom hover effects
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
 }
 
-Gradient text
+/* Gradient text */
 .gradient-text {
   background: linear-gradient(45deg, #8b5cf6, #3b82f6, #06b6d4);
   background-size: 200% 200%;
@@ -88,7 +151,7 @@ Gradient text
   }
 }
 
-Custom scrollbar
+/* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
 }
@@ -104,4 +167,4 @@ Custom scrollbar
 
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(139, 92, 246, 0.7);
-} */
+}
