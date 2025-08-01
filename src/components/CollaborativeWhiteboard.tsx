@@ -15,6 +15,7 @@ interface DrawingData {
   width?: number;
   height?: number;
   text?: string;
+  id?: string; // Add unique ID for shapes
 }
 
 export default function CollaborativeWhiteboard() {
@@ -30,6 +31,10 @@ export default function CollaborativeWhiteboard() {
   const [drawingData, setDrawingData] = createSignal<DrawingData[]>([]);
   const [onlineUsers, setOnlineUsers] = createSignal<string[]>([]);
   const [draggedItem, setDraggedItem] = createSignal<string | null>(null);
+  const [selectedShape, setSelectedShape] = createSignal<DrawingData | null>(null);
+  const [isDraggingShape, setIsDraggingShape] = createSignal(false);
+  const [showDeleteButton, setShowDeleteButton] = createSignal(false);
+  const [deleteButtonPos, setDeleteButtonPos] = createSignal({ x: 0, y: 0 });
 
   // Draggable items
   const draggableItems = [
@@ -338,9 +343,126 @@ export default function CollaborativeWhiteboard() {
     };
   };
 
+  // Generate unique ID for shapes
+  const generateId = () => {
+    return Date.now().toString(36) + Math.random().toString(36).substr(2);
+  };
+
+  // Check if a point is inside a shape
+  const isPointInShape = (x: number, y: number, shape: DrawingData): boolean => {
+    if (shape.type !== 'shape') return false;
+    
+    const size = shape.width || 50;
+    const dx = x - shape.x;
+    const dy = y - shape.y;
+    
+    switch (shape.shapeType) {
+      case 'rectangle':
+        return Math.abs(dx) <= size/2 && Math.abs(dy) <= size/2;
+      case 'circle':
+        return Math.sqrt(dx*dx + dy*dy) <= size/2;
+      case 'triangle':
+        // Simple bounding box check for triangle
+        return Math.abs(dx) <= size/2 && Math.abs(dy) <= size/2;
+      case 'star':
+      case 'heart':
+        return Math.sqrt(dx*dx + dy*dy) <= size/2;
+      case 'arrow':
+      case 'line':
+        return Math.abs(dx) <= size/2 && Math.abs(dy) <= 10;
+      case 'text':
+        return Math.abs(dx) <= size/2 && Math.abs(dy) <= size/4;
+      default:
+        return Math.abs(dx) <= size/2 && Math.abs(dy) <= size/2;
+    }
+  };
+
+  // Find shape at position
+  const findShapeAtPosition = (x: number, y: number): DrawingData | null => {
+    const shapes = drawingData().filter(data => data.type === 'shape');
+    // Check from newest to oldest (top to bottom)
+    for (let i = shapes.length - 1; i >= 0; i--) {
+      if (isPointInShape(x, y, shapes[i])) {
+        return shapes[i];
+      }
+    }
+    return null;
+  };
+
+  // Update shape position
+  const updateShapePosition = async (shapeId: string, newX: number, newY: number) => {
+    setDrawingData(prev => prev.map(data => 
+      data.id === shapeId ? { ...data, x: newX, y: newY } : data
+    ));
+    
+    // Send update to server
+    try {
+      await fetch('/api/whiteboard/update', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          shapeId,
+          x: newX,
+          y: newY,
+          userId: auth.user()?.id
+        }),
+      });
+    } catch (error) {
+      console.error('Failed to update shape position:', error);
+    }
+    
+    redrawCanvas();
+  };
+
+  // Delete shape
+  const deleteShape = async (shapeId: string) => {
+    setDrawingData(prev => prev.filter(data => data.id !== shapeId));
+    
+    // Send delete to server
+    try {
+      await fetch('/api/whiteboard/delete', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          shapeId,
+          userId: auth.user()?.id
+        }),
+      });
+    } catch (error) {
+      console.error('Failed to delete shape:', error);
+    }
+    
+    setSelectedShape(null);
+    setShowDeleteButton(false);
+    redrawCanvas();
+  };
+
   const startDrawing = (e: MouseEvent) => {
-    setIsDrawing(true);
     const pos = getMousePos(e);
+    
+    // Check if clicking on a shape
+    const clickedShape = findShapeAtPosition(pos.x, pos.y);
+    
+    if (clickedShape) {
+      // If we clicked on a shape, select it and show delete option
+      setSelectedShape(clickedShape);
+      setIsDraggingShape(true);
+      setShowDeleteButton(true);
+      setDeleteButtonPos({ 
+        x: clickedShape.x + (clickedShape.width || 50)/2, 
+        y: clickedShape.y - (clickedShape.height || 50)/2 - 10 
+      });
+      return;
+    }
+    
+    // If clicking on empty space, hide delete button and deselect
+    setSelectedShape(null);
+    setShowDeleteButton(false);
+    setIsDrawing(true);
     setLastPos(pos);
 
     // Draw initial point
@@ -368,6 +490,7 @@ export default function CollaborativeWhiteboard() {
       color: color(),
       userId: auth.user()?.id || "anonymous",
       timestamp: Date.now(),
+      id: generateId()
     };
 
     setDrawingData((prev) => [...prev, drawData]);
@@ -375,9 +498,22 @@ export default function CollaborativeWhiteboard() {
   };
 
   const draw = (e: MouseEvent) => {
+    const pos = getMousePos(e);
+    
+    // If dragging a shape, move it
+    if (isDraggingShape() && selectedShape()) {
+      const shape = selectedShape()!;
+      updateShapePosition(shape.id!, pos.x, pos.y);
+      setDeleteButtonPos({ 
+        x: pos.x + (shape.width || 50)/2, 
+        y: pos.y - (shape.height || 50)/2 - 10 
+      });
+      return;
+    }
+    
+    // Otherwise, continue normal drawing
     if (!isDrawing() || !ctx) return;
 
-    const pos = getMousePos(e);
     const last = lastPos();
 
     if (tool() === "pen") {
@@ -404,6 +540,7 @@ export default function CollaborativeWhiteboard() {
       color: color(),
       userId: auth.user()?.id || "anonymous",
       timestamp: Date.now(),
+      id: generateId()
     };
 
     setDrawingData((prev) => [...prev, drawData]);
@@ -413,6 +550,7 @@ export default function CollaborativeWhiteboard() {
 
   const stopDrawing = () => {
     setIsDrawing(false);
+    setIsDraggingShape(false);
   };
 
   const clearCanvas = async () => {
@@ -474,6 +612,7 @@ export default function CollaborativeWhiteboard() {
           width: 50,
           height: 50,
           text: draggedItemId === "text" ? "Sample Text" : undefined,
+          id: generateId(), // Add unique ID
         };
 
         // Draw the shape immediately
@@ -688,12 +827,38 @@ export default function CollaborativeWhiteboard() {
             Drawing...
           </div>
         )}
+        
+        {/* Shape selection indicator */}
+        {isDraggingShape() && selectedShape() && (
+          <div class="absolute top-2 left-2 bg-blue-600/20 text-blue-400 px-3 py-1 rounded-full text-sm border border-blue-500/30">
+            Moving shape...
+          </div>
+        )}
+        
+        {/* Delete button */}
+        {showDeleteButton() && selectedShape() && (
+          <button
+            onClick={() => deleteShape(selectedShape()!.id!)}
+            class="absolute bg-red-600 hover:bg-red-700 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg border-2 border-white transition-all duration-200 hover:scale-110"
+            style={{ 
+              left: `${deleteButtonPos().x}px`, 
+              top: `${deleteButtonPos().y}px`,
+              transform: 'translate(-50%, -50%)'
+            }}
+            title="Delete shape"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+          </button>
+        )}
       </div>
 
       {/* Instructions */}
       <div class="mt-4 text-sm text-gray-400">
         <p>• Click and drag to draw or erase</p>
         <p>• Drag items from the toolbar above to add shapes and elements</p>
+        <p>• Click on shapes to select them, then drag to move or click delete button</p>
         <p>• All changes are saved automatically and shared with other users</p>
         <p>• Use different colors and brush sizes to create your masterpiece</p>
       </div>

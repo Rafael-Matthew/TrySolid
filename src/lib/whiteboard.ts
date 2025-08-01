@@ -15,6 +15,7 @@ export interface DrawingData {
   width?: number;
   height?: number;
   text?: string;
+  id?: string; // Add unique ID for shapes
 }
 
 // Simple in-memory storage
