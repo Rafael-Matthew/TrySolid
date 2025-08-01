@@ -1,19 +1,25 @@
 import { createSignal } from "solid-js";
-import { A } from "@solidjs/router";
+import { A, useNavigate } from "@solidjs/router";
+import { useAuth } from "~/lib/auth";
 
 export default function LoginPage() {
   const [email, setEmail] = createSignal("");
   const [password, setPassword] = createSignal("");
-  const [isLoading, setIsLoading] = createSignal(false);
+  const [error, setError] = createSignal("");
+  const auth = useAuth();
+  const navigate = useNavigate();
 
-  const handleSubmit = (e: Event) => {
+  const handleSubmit = async (e: Event) => {
     e.preventDefault();
-    setIsLoading(true);
-    // Simulate login process
-    setTimeout(() => {
-      setIsLoading(false);
-      console.log("Login attempt:", { email: email(), password: password() });
-    }, 2000);
+    setError("");
+    
+    const result = await auth.login(email(), password());
+    
+    if (result.success) {
+      navigate("/dashboard"); // Redirect ke dashboard setelah login
+    } else {
+      setError(result.error || "Login failed");
+    }
   };
 
   return (
@@ -46,6 +52,13 @@ export default function LoginPage() {
 
           {/* Login Form */}
           <form onSubmit={handleSubmit} class="space-y-6">
+            {/* Error Message */}
+            {error() && (
+              <div class="bg-red-500/10 border border-red-500/20 rounded-xl p-4 text-red-400 text-sm animate-fade-in">
+                {error()}
+              </div>
+            )}
+
             {/* Email Input */}
             <div class="group">
               <label class="block text-sm font-medium text-gray-300 mb-2">Email</label>
@@ -100,10 +113,10 @@ export default function LoginPage() {
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={isLoading()}
+              disabled={auth.isLoading()}
               class="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white font-semibold py-3 px-4 rounded-xl transition-all duration-300 transform hover:scale-105 hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-transparent"
             >
-              {isLoading() ? (
+              {auth.isLoading() ? (
                 <div class="flex items-center justify-center">
                   <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
