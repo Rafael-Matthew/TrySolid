@@ -1,6 +1,7 @@
 import { useAuth } from "~/lib/auth";
 import { createEffect } from "solid-js";
 import { useNavigate } from "@solidjs/router";
+import CollaborativeWhiteboard from "~/components/CollaborativeWhiteboard";
 
 export default function Dashboard() {
   const auth = useAuth();
@@ -105,6 +106,11 @@ export default function Dashboard() {
                 </div>
               </div>
             </div>
+          </div>
+
+          {/* Collaborative Whiteboard */}
+          <div class="mt-8">
+            <CollaborativeWhiteboard />
           </div>
 
           {/* Main Content Area */}
